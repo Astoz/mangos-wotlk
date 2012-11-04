@@ -761,6 +761,35 @@ namespace MaNGOS
             GameObjectEntryInPosRangeCheck(GameObjectEntryInPosRangeCheck const&);
     };
 
+    // Success at gameobject of type in range of provided xyz
+    class GameObjectTypeInPosRangeCheck
+    {
+        public:
+            GameObjectTypeInPosRangeCheck(WorldObject const& obj, GameobjectTypes type, float x, float y, float z, float range)
+                : i_obj(obj), i_type(type), i_x(x), i_y(y), i_z(z), i_range(range) {}
+
+            WorldObject const& GetFocusObject() const { return i_obj; }
+
+            bool operator()(GameObject* go)
+            {
+                if (go->GetGoType() == i_type && go->IsWithinDist3d(i_x, i_y, i_z, i_range))
+                    return true;
+
+                return false;
+            }
+
+            float GetLastRange() const { return i_range; }
+
+        private:
+            WorldObject const& i_obj;
+            GameobjectTypes i_type;
+            float i_x, i_y, i_z;
+            float i_range;
+
+            // prevent clone this object
+            GameObjectTypeInPosRangeCheck(GameObjectTypeInPosRangeCheck const&);
+    };
+
     // Unit checks
 
     class MostHPMissingInRangeCheck

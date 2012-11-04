@@ -174,6 +174,9 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map* map, uint32 phaseMa
     SetGoArtKit(0);                                         // unknown what this is
     SetGoAnimProgress(animprogress);
 
+    if (goinfo->type == GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING)
+        ForceGameObjectHealth(GetMaxHealth(), false);
+
     // Notify the battleground or outdoor pvp script
     if (map->IsBattleGroundOrArena())
         ((BattleGroundMap*)map)->GetBG()->HandleGameObjectCreate(this);
@@ -2241,5 +2244,115 @@ void GameObject::TickCapturePoint()
         // Send script event to SD2 and database as well - this can be used for summoning creatures, casting specific spells or spawning GOs
         if (!sScriptMgr.OnProcessEvent(eventId, this, this, true))
             GetMap()->ScriptsStart(sEventScripts, eventId, this, this);
+    }
+}
+
+// ////////////////////////////////////////////////////////////////////////////////////////////////
+//                              Destructable GO handling
+// ////////////////////////////////////////////////////////////////////////////////////////////////
+void GameObject::DealGameObjectDamage(uint32 damage, uint32 spell, Unit* caster)
+{
+    MANGOS_ASSERT(GetGoType() == GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING);
+    MANGOS_ASSERT(spell && sSpellStore.LookupEntry(spell) && caster);
+
+    if (!damage)                                            // TODO: What means 0 damage?
+        return;
+
+    ForceGameObjectHealth(-int32(damage), true);
+
+    Unit* who = caster->GetCharmerOrOwnerOrSelf();          // Required for vehicle and such
+
+    WorldPacket data(SMSG_DESTRUCTIBLE_BUILDING_DAMAGE, 9+9+9+4+4);
+    data << GetPackGUID();
+    data << caster->GetPackGUID();
+    data << (who ? who->GetPackGUID() : caster->GetPackGUID());
+    data << uint32(damage);
+    data << uint32(spell);
+    SendMessageToSet(&data, false);
+}
+
+void GameObject::RebuildGameObject(uint32 spell, Unit* caster)
+{
+    MANGOS_ASSERT(GetGoType() == GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING);
+    ForceGameObjectHealth(0, true);
+}
+
+void GameObject::ForceGameObjectHealth(int32 diff, bool updateForClient)
+{
+    MANGOS_ASSERT(GetGoType() == GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING);
+
+    if (diff < 0)                                           // Taken damage
+    {
+        if (m_useTimes > uint32(-diff))
+            m_useTimes += diff;
+        else
+            m_useTimes = 0;
+    }
+    else if (diff == 0)                                     // Rebuild - TODO: Rebuilding over time with special display-id?
+        m_useTimes = GetMaxHealth();
+    else                                                    // Set to value
+        m_useTimes = uint32(diff);
+
+    uint32 newDisplayId = -1;                               // Set to invalid -1 to track if we switched to a change state
+    DestructibleModelDataEntry const* destructibleInfo = sDestructibleModelDataStore.LookupEntry(m_goInfo->destructibleBuilding.destructibleData);
+
+    // Get Current State
+    if (m_useTimes == 0)                                    // Destroyed
+    {
+        if (!HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_11))     // Was not destroyed before
+        {
+            RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_9 | GO_FLAG_UNK_10);
+            SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_11);
+
+            // Get destroyed DisplayId
+            if ((!m_goInfo->destructibleBuilding.destroyedDisplayId || m_goInfo->destructibleBuilding.destroyedDisplayId == 1) && destructibleInfo)
+                newDisplayId = destructibleInfo->destroyedDisplayId;
+            else
+                newDisplayId = m_goInfo->destructibleBuilding.destroyedDisplayId;
+
+            if (!newDisplayId)                              // No proper destroyed display ID exists, fetch damaged
+            {
+                if ((!m_goInfo->destructibleBuilding.damagedDisplayId || m_goInfo->destructibleBuilding.damagedDisplayId == 1) && destructibleInfo)
+                    newDisplayId = destructibleInfo->damagedDisplayId;
+                else
+                    newDisplayId = m_goInfo->destructibleBuilding.damagedDisplayId;
+            }
+        }
+    }
+    else if (m_useTimes == GetMaxHealth())                  // Full Health
+    {
+        RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_9 | GO_FLAG_UNK_10 | GO_FLAG_UNK_11);
+        newDisplayId = m_goInfo->displayId;
+    }
+    else if (m_useTimes <= m_goInfo->destructibleBuilding.damagedNumHits) // Damaged
+    {
+        if (!HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_10))     // Was not damaged before
+        {
+            SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_10);
+
+            // Get damaged DisplayId
+            if ((!m_goInfo->destructibleBuilding.damagedDisplayId || m_goInfo->destructibleBuilding.damagedDisplayId == 1) && destructibleInfo)
+                newDisplayId = destructibleInfo->damagedDisplayId;
+            else
+                newDisplayId = m_goInfo->destructibleBuilding.damagedDisplayId;
+        }
+    }
+
+    if (newDisplayId != -1 && newDisplayId != GetDisplayId())
+    {
+        // Check invalid id first TODO - what if == 0?
+        if (newDisplayId)
+            SetDisplayId(newDisplayId);
+    }
+
+    SetGoAnimProgress(m_useTimes * 255 / GetMaxHealth());
+    if (updateForClient)
+    {
+        // Understand this better
+        WorldPacket data(SMSG_GAMEOBJECT_CUSTOM_ANIM, 8 + 4 + 4);
+        data << GetObjectGuid();
+        //data << uint32(0);
+        data << uint32(GetByteValue(GAMEOBJECT_BYTES_1, 3));
+        SendMessageToSet(&data, true);
     }
 }
