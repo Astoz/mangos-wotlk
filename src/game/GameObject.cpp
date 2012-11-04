@@ -2296,8 +2296,13 @@ void GameObject::ForceGameObjectHealth(int32 diff, bool updateForClient)
     uint32 newDisplayId = -1;                               // Set to invalid -1 to track if we switched to a change state
     DestructibleModelDataEntry const* destructibleInfo = sDestructibleModelDataStore.LookupEntry(m_goInfo->destructibleBuilding.destructibleData);
 
-    // Get Current State
-    if (m_useTimes == 0)                                    // Destroyed
+    // Get Current State - Note about order: Important for GetMaxHealth() == 0
+    if (m_useTimes == GetMaxHealth())                       // Full Health
+    {
+        RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_9 | GO_FLAG_UNK_10 | GO_FLAG_UNK_11);
+        newDisplayId = m_goInfo->displayId;
+    }
+    else if (m_useTimes == 0)                               // Destroyed
     {
         if (!HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_11))     // Was not destroyed before
         {
@@ -2318,11 +2323,6 @@ void GameObject::ForceGameObjectHealth(int32 diff, bool updateForClient)
                     newDisplayId = m_goInfo->destructibleBuilding.damagedDisplayId;
             }
         }
-    }
-    else if (m_useTimes == GetMaxHealth())                  // Full Health
-    {
-        RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_9 | GO_FLAG_UNK_10 | GO_FLAG_UNK_11);
-        newDisplayId = m_goInfo->displayId;
     }
     else if (m_useTimes <= m_goInfo->destructibleBuilding.damagedNumHits) // Damaged
     {
@@ -2345,7 +2345,7 @@ void GameObject::ForceGameObjectHealth(int32 diff, bool updateForClient)
             SetDisplayId(newDisplayId);
     }
 
-    SetGoAnimProgress(m_useTimes * 255 / GetMaxHealth());
+    SetGoAnimProgress(GetMaxHealth() ? m_useTimes * 255 / GetMaxHealth() : 255);
     if (updateForClient)
     {
         // Understand this better
