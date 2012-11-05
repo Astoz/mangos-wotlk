@@ -22,6 +22,20 @@
 #include "Platform/Define.h"
 #include <cassert>
 
+// Replace useless bool values in cases an undefined state might be required
+enum TROOL_F0                                               // evaluate !checks as false
+{
+    TROOL_F0_FALSE          = 0,
+    TROOL_F0_TRUE           = 1,
+    TROOL_F0_UNDEFINED      = 2,
+};
+enum TROOL_U0                                               // evaluate !checks as undefined
+{
+    TROOL_U0_UNDEFINED      = 0,
+    TROOL_U0_TRUE           = 1,
+    TROOL_U0_FALSE          = 2,
+};
+
 enum Gender
 {
     GENDER_MALE                        = 0,

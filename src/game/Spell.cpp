@@ -2128,11 +2128,13 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             break;
         case TARGET_AREAEFFECT_INSTANT:
         {
-            SpellTargets targetB = SPELL_TARGETS_AOE_DAMAGE;
-
-            // Select friendly targets for positive effect
-            if (IsPositiveEffect(m_spellInfo, effIndex))
-                targetB = SPELL_TARGETS_FRIENDLY;
+            SpellTargets targetB;
+            switch (IsPositiveEffect(m_spellInfo, effIndex))
+            {
+                case TROOL_F0_FALSE:     targetB = SPELL_TARGETS_AOE_DAMAGE; break;
+                case TROOL_F0_TRUE:      targetB = SPELL_TARGETS_FRIENDLY;   break;
+                case TROOL_F0_UNDEFINED: targetB = SPELL_TARGETS_ALL;        break;
+            }
 
             UnitList tempTargetUnitMap;
             SpellScriptTargetBounds bounds = sSpellMgr.GetSpellScriptTargetBounds(m_spellInfo->Id);
