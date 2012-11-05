@@ -175,7 +175,7 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map* map, uint32 phaseMa
     SetGoAnimProgress(animprogress);
 
     if (goinfo->type == GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING)
-        ForceGameObjectHealth(GetMaxHealth(), false);
+        ForceGameObjectHealth(GetMaxHealth(), NULL);
 
     // Notify the battleground or outdoor pvp script
     if (map->IsBattleGroundOrArena())
@@ -2258,7 +2258,7 @@ void GameObject::DealGameObjectDamage(uint32 damage, uint32 spell, Unit* caster)
     if (!damage)                                            // TODO: What means 0 damage?
         return;
 
-    ForceGameObjectHealth(-int32(damage), true);
+    ForceGameObjectHealth(-int32(damage), caster);
 
     Unit* who = caster->GetCharmerOrOwnerOrSelf();          // Required for vehicle and such
 
@@ -2274,10 +2274,12 @@ void GameObject::DealGameObjectDamage(uint32 damage, uint32 spell, Unit* caster)
 void GameObject::RebuildGameObject(uint32 spell, Unit* caster)
 {
     MANGOS_ASSERT(GetGoType() == GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING);
-    ForceGameObjectHealth(0, true);
+    MANGOS_ASSERT(caster);
+
+    ForceGameObjectHealth(0, caster);
 }
 
-void GameObject::ForceGameObjectHealth(int32 diff, bool updateForClient)
+void GameObject::ForceGameObjectHealth(int32 diff, Unit* caster)
 {
     MANGOS_ASSERT(GetGoType() == GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING);
 
@@ -2289,7 +2291,12 @@ void GameObject::ForceGameObjectHealth(int32 diff, bool updateForClient)
             m_useTimes = 0;
     }
     else if (diff == 0)                                     // Rebuild - TODO: Rebuilding over time with special display-id?
+    {
         m_useTimes = GetMaxHealth();
+        // Start Event if exist
+        if (caster && m_goInfo->destructibleBuilding.rebuildingEvent)
+            GetMap()->ScriptsStart(sEventScripts, m_goInfo->destructibleBuilding.rebuildingEvent, this, caster->GetCharmerOrOwnerOrSelf());
+    }
     else                                                    // Set to value
         m_useTimes = uint32(diff);
 
@@ -2301,6 +2308,10 @@ void GameObject::ForceGameObjectHealth(int32 diff, bool updateForClient)
     {
         RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_9 | GO_FLAG_UNK_10 | GO_FLAG_UNK_11);
         newDisplayId = m_goInfo->displayId;
+
+        // Start Event if exist
+        if (caster && m_goInfo->destructibleBuilding.intactEvent)
+            GetMap()->ScriptsStart(sEventScripts, m_goInfo->destructibleBuilding.intactEvent, this, caster->GetCharmerOrOwnerOrSelf());
     }
     else if (m_useTimes == 0)                               // Destroyed
     {
@@ -2322,6 +2333,10 @@ void GameObject::ForceGameObjectHealth(int32 diff, bool updateForClient)
                 else
                     newDisplayId = m_goInfo->destructibleBuilding.damagedDisplayId;
             }
+
+            // Start Event if exist
+            if (caster && m_goInfo->destructibleBuilding.destroyedEvent)
+                GetMap()->ScriptsStart(sEventScripts, m_goInfo->destructibleBuilding.destroyedEvent, this, caster->GetCharmerOrOwnerOrSelf());
         }
     }
     else if (m_useTimes <= m_goInfo->destructibleBuilding.damagedNumHits) // Damaged
@@ -2335,6 +2350,10 @@ void GameObject::ForceGameObjectHealth(int32 diff, bool updateForClient)
                 newDisplayId = destructibleInfo->damagedDisplayId;
             else
                 newDisplayId = m_goInfo->destructibleBuilding.damagedDisplayId;
+
+            // Start Event if exist
+            if (caster && m_goInfo->destructibleBuilding.damagedEvent)
+                GetMap()->ScriptsStart(sEventScripts, m_goInfo->destructibleBuilding.damagedEvent, this, caster->GetCharmerOrOwnerOrSelf());
         }
     }
 
@@ -2346,7 +2365,7 @@ void GameObject::ForceGameObjectHealth(int32 diff, bool updateForClient)
     }
 
     SetGoAnimProgress(GetMaxHealth() ? m_useTimes * 255 / GetMaxHealth() : 255);
-    if (updateForClient)
+    if (caster)                                             // Send status update
     {
         // Understand this better
         WorldPacket data(SMSG_GAMEOBJECT_CUSTOM_ANIM, 8 + 4 + 4);

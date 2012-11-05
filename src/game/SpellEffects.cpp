@@ -9856,16 +9856,16 @@ void Spell::EffectWMOChange(SpellEffectIndex effIdx)
     switch (m_spellInfo->EffectMiscValue[effIdx])
     {
         case 0:                                             // Set to full health
-            gameObjTarget->ForceGameObjectHealth(gameObjTarget->GetMaxHealth(), true);
+            gameObjTarget->ForceGameObjectHealth(gameObjTarget->GetMaxHealth(), caster);
             break;
         case 1:                                             // Set to damaged
-            gameObjTarget->ForceGameObjectHealth(gameObjTarget->GetGOInfo()->destructibleBuilding.damagedNumHits, true);
+            gameObjTarget->ForceGameObjectHealth(gameObjTarget->GetGOInfo()->destructibleBuilding.damagedNumHits, caster);
             break;
         case 2:                                             // Set to destroyed
-            gameObjTarget->ForceGameObjectHealth(-int32(gameObjTarget->GetHealth()), true);
+            gameObjTarget->ForceGameObjectHealth(-int32(gameObjTarget->GetHealth()), caster);
             break;
         case 3:                                             // Set to rebuilding
-            gameObjTarget->ForceGameObjectHealth(0, true);
+            gameObjTarget->ForceGameObjectHealth(0, caster);
             break;
         default:
             sLog.outError("Spell::EffectWMOChange, spell Id %u with undefined change value %u", m_spellInfo->Id,m_spellInfo->EffectMiscValue[effIdx]);
