@@ -2260,12 +2260,10 @@ void GameObject::DealGameObjectDamage(uint32 damage, uint32 spell, Unit* caster)
 
     ForceGameObjectHealth(-int32(damage), caster);
 
-    Unit* who = caster->GetCharmerOrOwnerOrSelf();          // Required for vehicle and such
-
     WorldPacket data(SMSG_DESTRUCTIBLE_BUILDING_DAMAGE, 9+9+9+4+4);
     data << GetPackGUID();
     data << caster->GetPackGUID();
-    data << (who ? who->GetPackGUID() : caster->GetPackGUID());
+    data << caster->GetCharmerOrOwnerOrSelf()->GetPackGUID();
     data << uint32(damage);
     data << uint32(spell);
     SendMessageToSet(&data, false);
