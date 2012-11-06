@@ -363,6 +363,9 @@ bool CreatureEventAI::ProcessEvent(CreatureEventAIHolder& pHolder, Unit* pAction
             pHolder.UpdateRepeatTimer(m_creature, event.buffed.repeatMin, event.buffed.repeatMax);
             break;
         }
+        case EVENT_T_RECEIVE_AI_EVENT:
+            // TODO - checks?
+            break;
         default:
             sLog.outErrorDb("CreatureEventAI: Creature %u using Event %u has invalid Event Type(%u), missing from ProcessEvent() Switch.", m_creature->GetEntry(), pHolder.Event.event_id, pHolder.Event.event_type);
             break;
@@ -864,6 +867,12 @@ void CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
 
             break;
         }
+        case ACTION_T_THROW_AI_EVENT:
+        {
+            // TODO radius = 0 case!
+            SendAIEvent(AIEventType(action.throwEvent.eventType), pActionInvoker, 0, action.throwEvent.radius);
+            break;
+        }
     }
 }
 
@@ -1024,6 +1033,18 @@ void CreatureEventAI::SummonedCreatureDespawn(Creature* pUnit)
     {
         if ((*i).Event.event_type == EVENT_T_SUMMONED_JUST_DESPAWN)
             ProcessEvent(*i, pUnit);
+    }
+}
+
+void CreatureEventAI::ReceiveAIEvent(AIEventType eventType, Creature* pSender, Unit* pInvoker)
+{
+    if (m_bEmptyList || !pSender)
+        return;
+
+    for (CreatureEventAIList::iterator itr = m_CreatureEventAIList.begin(); itr != m_CreatureEventAIList.end(); ++itr)
+    {
+        if (itr->Event.event_type == EVENT_T_RECEIVE_AI_EVENT && (!itr->Event.receiveAIEvent.senderEntry || itr->Event.receiveAIEvent.senderEntry == pSender->GetEntry()))
+            ProcessEvent(*itr, pSender);
     }
 }
 
