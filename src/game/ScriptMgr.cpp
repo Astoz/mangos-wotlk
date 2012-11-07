@@ -28,6 +28,8 @@
 #include "Cell.h"
 #include "CellImpl.h"
 #include "SQLStorages.h"
+#include "BattleGround/BattleGround.h"
+#include "OutdoorPvP/OutdoorPvP.h"
 
 #include "revision_nr.h"
 
@@ -2085,6 +2087,29 @@ void ScriptMgr::CollectPossibleEventIds(std::set<uint32>& eventIds)
     }
 }
 
+// Starters for events
+bool StartEvents_Event(Map* map, uint32 id, Object* source, Object* target, bool isStart/*=true*/, BattleGround* bg/*=NULL*/, OutdoorPvP* opvp/*=NULL*/)
+{
+    // Handle SD2 script
+    if (sScriptMgr.OnProcessEvent(id, source, target, isStart))
+        return true;
+
+    // Handle PvP Calls
+    if (bg && source && source->GetTypeId() == TYPEID_GAMEOBJECT)
+    {
+        if (bg->HandleEvent(id, static_cast<GameObject*>(source)))
+            return true;
+    }
+    else if (opvp && source && source->GetTypeId() == TYPEID_GAMEOBJECT)
+    {
+        if (opvp->HandleEvent(id, static_cast<GameObject*>(source)))
+            return true;
+    }
+
+    return map->ScriptsStart(sEventScripts, id, source, target);
+}
+
+// Wrappers
 uint32 GetAreaTriggerScriptId(uint32 triggerId)
 {
     return sScriptMgr.GetAreaTriggerScriptId(triggerId);

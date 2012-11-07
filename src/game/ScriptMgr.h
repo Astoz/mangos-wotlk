@@ -40,6 +40,8 @@ class Quest;
 class SpellCastTargets;
 class Unit;
 class WorldObject;
+class BattleGround;
+class OutdoorPvP;
 
 enum ScriptCommand                                          // resSource, resTarget are the resulting Source/ Target after buddy search is done
 {
@@ -520,6 +522,9 @@ class ScriptMgr
         bool (MANGOS_IMPORT* m_pOnEffectDummyItem)(Unit*, uint32, SpellEffectIndex, Item*);
         bool (MANGOS_IMPORT* m_pOnAuraDummy)(Aura const*, bool);
 };
+
+// Starters for events
+bool StartEvents_Event(Map* map, uint32 id, Object* source, Object* target, bool isStart = true, BattleGround* bg = NULL, OutdoorPvP* opvp = NULL);
 
 #define sScriptMgr MaNGOS::Singleton<ScriptMgr>::Instance()
 
