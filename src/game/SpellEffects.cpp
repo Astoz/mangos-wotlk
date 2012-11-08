@@ -46,7 +46,6 @@
 #include "BattleGround/BattleGround.h"
 #include "BattleGround/BattleGroundEY.h"
 #include "BattleGround/BattleGroundWS.h"
-#include "OutdoorPvP/OutdoorPvPMgr.h"
 #include "Language.h"
 #include "SocialMgr.h"
 #include "VMapFactory.h"
@@ -4136,14 +4135,7 @@ void Spell::EffectSendEvent(SpellEffectIndex effectIndex)
     TODO: Actually, why not...
     */
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Spell ScriptStart %u for spellid %u in EffectSendEvent ", m_spellInfo->EffectMiscValue[effectIndex], m_spellInfo->Id);
-    BattleGround* bg = NULL;
-    OutdoorPvP* opvp = NULL;
-    if (m_caster->GetTypeId() == TYPEID_PLAYER)
-    {
-        bg = ((Player*)m_caster)->GetBattleGround();
-        opvp = sOutdoorPvPMgr.GetScript(((Player*)m_caster)->GetCachedZoneId());
-    }
-    StartEvents_Event(m_caster->GetMap(), m_spellInfo->EffectMiscValue[effectIndex], m_caster, focusObject, true, bg, opvp);
+    StartEvents_Event(m_caster->GetMap(), m_spellInfo->EffectMiscValue[effectIndex], m_caster, focusObject, true, m_caster);
 }
 
 void Spell::EffectPowerBurn(SpellEffectIndex eff_idx)

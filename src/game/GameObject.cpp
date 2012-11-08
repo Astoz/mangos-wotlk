@@ -1944,7 +1944,7 @@ float GameObject::GetObjectBoundingRadius() const
         float dy = m_displayInfo->geoBoxMaxY - m_displayInfo->geoBoxMinY;
         float dz = m_displayInfo->geoBoxMaxZ - m_displayInfo->geoBoxMinZ;
 
-        return (std::abs(dx) + std::abs(dy) + std::abs(dz)) / 2;
+        return (std::abs(dx) + std::abs(dy) + std::abs(dz)) / 2 * GetObjectScale();
     }
 
     return DEFAULT_WORLD_OBJECT_SIZE;
@@ -2219,18 +2219,18 @@ void GameObject::TickCapturePoint()
     }
 
     if (eventId)
-        StartEvents_Event(GetMap(), eventId, this, this, true, (*capturingPlayers.begin())->GetBattleGround(), sOutdoorPvPMgr.GetScript((*capturingPlayers.begin())->GetCachedZoneId()));
+        StartEvents_Event(GetMap(), eventId, this, this, true, *capturingPlayers.begin());
 }
 
 // ////////////////////////////////////////////////////////////////////////////////////////////////
-//                              Destructable GO handling
+//                              Destructible GO handling
 // ////////////////////////////////////////////////////////////////////////////////////////////////
 void GameObject::DealGameObjectDamage(uint32 damage, uint32 spell, Unit* caster)
 {
     MANGOS_ASSERT(GetGoType() == GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING);
     MANGOS_ASSERT(spell && sSpellStore.LookupEntry(spell) && caster);
 
-    if (!damage)                                            // TODO: What means 0 damage?
+    if (!damage)
         return;
 
     ForceGameObjectHealth(-int32(damage), caster);
@@ -2255,9 +2255,12 @@ void GameObject::RebuildGameObject(uint32 spell, Unit* caster)
 void GameObject::ForceGameObjectHealth(int32 diff, Unit* caster)
 {
     MANGOS_ASSERT(GetGoType() == GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING);
+    MANGOS_ASSERT(caster || diff > 0);
 
     if (diff < 0)                                           // Taken damage
     {
+        DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DestructibleGO: %s taken damage %u dealt by %s", GetGuidStr().c_str(), uint32(-diff), caster->GetGuidStr().c_str());
+
         if (m_useTimes > uint32(-diff))
             m_useTimes += diff;
         else
@@ -2265,10 +2268,12 @@ void GameObject::ForceGameObjectHealth(int32 diff, Unit* caster)
     }
     else if (diff == 0)                                     // Rebuild - TODO: Rebuilding over time with special display-id?
     {
+        DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DestructibleGO: %s start rebuild by %s", GetGuidStr().c_str(), caster->GetGuidStr().c_str());
+
         m_useTimes = GetMaxHealth();
         // Start Event if exist
         if (caster && m_goInfo->destructibleBuilding.rebuildingEvent)
-            GetMap()->ScriptsStart(sEventScripts, m_goInfo->destructibleBuilding.rebuildingEvent, this, caster->GetCharmerOrOwnerOrSelf());
+            StartEvents_Event(GetMap(), m_goInfo->destructibleBuilding.rebuildingEvent, this, caster->GetCharmerOrOwnerOrSelf(), true, caster->GetCharmerOrOwnerOrSelf());
     }
     else                                                    // Set to value
         m_useTimes = uint32(diff);
@@ -2279,17 +2284,21 @@ void GameObject::ForceGameObjectHealth(int32 diff, Unit* caster)
     // Get Current State - Note about order: Important for GetMaxHealth() == 0
     if (m_useTimes == GetMaxHealth())                       // Full Health
     {
+        DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DestructibleGO: %s set to full health %u", GetGuidStr().c_str(), m_useTimes);
+
         RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_9 | GO_FLAG_UNK_10 | GO_FLAG_UNK_11);
         newDisplayId = m_goInfo->displayId;
 
         // Start Event if exist
         if (caster && m_goInfo->destructibleBuilding.intactEvent)
-            GetMap()->ScriptsStart(sEventScripts, m_goInfo->destructibleBuilding.intactEvent, this, caster->GetCharmerOrOwnerOrSelf());
+            StartEvents_Event(GetMap(), m_goInfo->destructibleBuilding.intactEvent, this, caster->GetCharmerOrOwnerOrSelf(), true, caster->GetCharmerOrOwnerOrSelf());
     }
     else if (m_useTimes == 0)                               // Destroyed
     {
         if (!HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_11))     // Was not destroyed before
         {
+            DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DestructibleGO: %s got destroyed", GetGuidStr().c_str());
+
             RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_9 | GO_FLAG_UNK_10);
             SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_11);
 
@@ -2309,13 +2318,15 @@ void GameObject::ForceGameObjectHealth(int32 diff, Unit* caster)
 
             // Start Event if exist
             if (caster && m_goInfo->destructibleBuilding.destroyedEvent)
-                GetMap()->ScriptsStart(sEventScripts, m_goInfo->destructibleBuilding.destroyedEvent, this, caster->GetCharmerOrOwnerOrSelf());
+                StartEvents_Event(GetMap(), m_goInfo->destructibleBuilding.destroyedEvent, this, caster->GetCharmerOrOwnerOrSelf(), true, caster->GetCharmerOrOwnerOrSelf());
         }
     }
     else if (m_useTimes <= m_goInfo->destructibleBuilding.damagedNumHits) // Damaged
     {
         if (!HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_10))     // Was not damaged before
         {
+            DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DestructibleGO: %s got damaged (health now %u)", GetGuidStr().c_str(), m_useTimes);
+
             SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_10);
 
             // Get damaged DisplayId
@@ -2326,25 +2337,14 @@ void GameObject::ForceGameObjectHealth(int32 diff, Unit* caster)
 
             // Start Event if exist
             if (caster && m_goInfo->destructibleBuilding.damagedEvent)
-                GetMap()->ScriptsStart(sEventScripts, m_goInfo->destructibleBuilding.damagedEvent, this, caster->GetCharmerOrOwnerOrSelf());
+                StartEvents_Event(GetMap(), m_goInfo->destructibleBuilding.damagedEvent, this, caster->GetCharmerOrOwnerOrSelf(), true, caster->GetCharmerOrOwnerOrSelf());
         }
     }
 
-    if (newDisplayId != -1 && newDisplayId != GetDisplayId())
-    {
-        // Check invalid id first TODO - what if == 0?
-        if (newDisplayId)
-            SetDisplayId(newDisplayId);
-    }
+    // Set display Id
+    if (newDisplayId != -1 && newDisplayId != GetDisplayId() && newDisplayId)
+        SetDisplayId(newDisplayId);
 
+    // Set health
     SetGoAnimProgress(GetMaxHealth() ? m_useTimes * 255 / GetMaxHealth() : 255);
-    if (caster)                                             // Send status update
-    {
-        // Understand this better
-        WorldPacket data(SMSG_GAMEOBJECT_CUSTOM_ANIM, 8 + 4 + 4);
-        data << GetObjectGuid();
-        //data << uint32(0);
-        data << uint32(GetByteValue(GAMEOBJECT_BYTES_1, 3));
-        SendMessageToSet(&data, true);
-    }
 }

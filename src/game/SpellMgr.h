@@ -258,7 +258,7 @@ inline bool IsNonCombatSpell(SpellEntry const* spellInfo)
 
 bool IsPositiveSpell(uint32 spellId);
 bool IsPositiveSpell(SpellEntry const* spellproto);
-TROOL_F0 IsPositiveEffect(SpellEntry const* spellInfo, SpellEffectIndex effIndex);
+bool IsPositiveEffect(SpellEntry const* spellInfo, SpellEffectIndex effIndex);
 bool IsPositiveTarget(uint32 targetA, uint32 targetB);
 
 bool IsExplicitPositiveTarget(uint32 targetA);

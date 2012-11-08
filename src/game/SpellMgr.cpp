@@ -672,7 +672,7 @@ bool IsExplicitNegativeTarget(uint32 targetA)
     return false;
 }
 
-TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effIndex)
+bool IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effIndex)
 {
     switch (spellproto->Effect[effIndex])
     {
@@ -681,11 +681,12 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
             switch (spellproto->Id)
             {
                 case 28441:                                 // AB Effect 000
-                    return TROOL_F0_FALSE;
+                    return false;
+                case 18153:                                 // Kodo Kombobulator
                 case 49634:                                 // Sergeant's Flare
                 case 54530:                                 // Opening
                 case 62105:                                 // To'kini's Blowgun
-                    return TROOL_F0_TRUE;
+                    return true;
                 default:
                     break;
             }
@@ -696,11 +697,10 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
         case SPELL_EFFECT_SKILL_STEP:
         case SPELL_EFFECT_HEAL_PCT:
         case SPELL_EFFECT_ENERGIZE_PCT:
-            return TROOL_F0_TRUE;
         case SPELL_EFFECT_QUEST_COMPLETE:
         case SPELL_EFFECT_KILL_CREDIT_PERSONAL:
         case SPELL_EFFECT_KILL_CREDIT_GROUP:
-            return TROOL_F0_UNDEFINED;
+            return true;
 
             // non-positive aura use
         case SPELL_EFFECT_APPLY_AURA:
@@ -722,7 +722,7 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
                         case 11196:                         // Recently Bandaged
                         case 44689:                         // Relay Race Accept Hidden Debuff - DND
                         case 58600:                         // Restricted Flight Area
-                            return TROOL_F0_FALSE;
+                            return false;
                             // some spells have unclear target modes for selection, so just make effect positive
                         case 27184:
                         case 27190:
@@ -731,7 +731,7 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
                         case 27202:
                         case 27203:
                         case 47669:
-                            return TROOL_F0_TRUE;
+                            return true;
                         default:
                             break;
                     }
@@ -744,21 +744,21 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
                 case SPELL_AURA_MOD_HEALING_PCT:
                 case SPELL_AURA_MOD_HEALING_DONE:
                     if (spellproto->CalculateSimpleValue(effIndex) < 0)
-                        return TROOL_F0_FALSE;
+                        return false;
                     break;
                 case SPELL_AURA_MOD_DAMAGE_TAKEN:           // dependent from bas point sign (positive -> negative)
                     if (spellproto->CalculateSimpleValue(effIndex) < 0)
-                        return TROOL_F0_TRUE;
+                        return true;
                     // let check by target modes (for Amplify Magic cases/etc)
                     break;
                 case SPELL_AURA_MOD_SPELL_CRIT_CHANCE:
                 case SPELL_AURA_MOD_INCREASE_HEALTH_PERCENT:
                 case SPELL_AURA_MOD_DAMAGE_PERCENT_DONE:
                     if (spellproto->CalculateSimpleValue(effIndex) > 0)
-                        return TROOL_F0_TRUE;               // some expected positive spells have SPELL_ATTR_EX_NEGATIVE or unclear target modes
+                        return true;                        // some expected positive spells have SPELL_ATTR_EX_NEGATIVE or unclear target modes
                     break;
                 case SPELL_AURA_ADD_TARGET_TRIGGER:
-                    return TROOL_F0_TRUE;
+                    return true;
                 case SPELL_AURA_PERIODIC_TRIGGER_SPELL:
                     if (spellproto->Id != spellproto->EffectTriggerSpell[effIndex])
                     {
@@ -775,7 +775,7 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
                                 if (spellTriggeredProto->Effect[i] &&
                                         IsPositiveTarget(spellTriggeredProto->EffectImplicitTargetA[i], spellTriggeredProto->EffectImplicitTargetB[i]) &&
                                         !IsPositiveEffect(spellTriggeredProto, SpellEffectIndex(i)))
-                                    return TROOL_F0_FALSE;
+                                    return false;
                             }
                         }
                     }
@@ -785,43 +785,43 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
                     break;
                 case SPELL_AURA_MOD_STUN:                   // have positive and negative spells, we can't sort its correctly at this moment.
                     if (effIndex == EFFECT_INDEX_0 && spellproto->Effect[EFFECT_INDEX_1] == 0 && spellproto->Effect[EFFECT_INDEX_2] == 0)
-                        return TROOL_F0_FALSE;              // but all single stun aura spells is negative
+                        return false;                       // but all single stun aura spells is negative
 
                     // Petrification
                     if (spellproto->Id == 17624)
-                        return TROOL_F0_FALSE;
+                        return false;
                     break;
                 case SPELL_AURA_MOD_PACIFY_SILENCE:
                     switch (spellproto->Id)
                     {
                         case 24740:                         // Wisp Costume
                         case 47585:                         // Dispersion
-                            return TROOL_F0_TRUE;
+                            return true;
                         default: break;
                     }
-                    return TROOL_F0_FALSE;
+                    return false;
                 case SPELL_AURA_MOD_ROOT:
                 case SPELL_AURA_MOD_SILENCE:
                 case SPELL_AURA_GHOST:
                 case SPELL_AURA_PERIODIC_LEECH:
                 case SPELL_AURA_MOD_STALKED:
                 case SPELL_AURA_PERIODIC_DAMAGE_PERCENT:
-                    return TROOL_F0_FALSE;
+                    return false;
                 case SPELL_AURA_PERIODIC_DAMAGE:            // used in positive spells also.
                     // part of negative spell if casted at self (prevent cancel)
                     if (spellproto->EffectImplicitTargetA[effIndex] == TARGET_SELF ||
                             spellproto->EffectImplicitTargetA[effIndex] == TARGET_SELF2)
-                        return TROOL_F0_FALSE;
+                        return false;
                     break;
                 case SPELL_AURA_MOD_DECREASE_SPEED:         // used in positive spells also
                     // part of positive spell if casted at self
                     if ((spellproto->EffectImplicitTargetA[effIndex] == TARGET_SELF ||
                             spellproto->EffectImplicitTargetA[effIndex] == TARGET_SELF2) &&
                             spellproto->SpellFamilyName == SPELLFAMILY_GENERIC)
-                        return TROOL_F0_FALSE;
+                        return false;
                     // but not this if this first effect (don't found better check)
                     if (spellproto->HasAttribute(SPELL_ATTR_UNK26) && effIndex == EFFECT_INDEX_0)
-                        return TROOL_F0_FALSE;
+                        return false;
                     break;
                 case SPELL_AURA_TRANSFORM:
                     // some spells negative
@@ -829,7 +829,7 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
                     {
                         case 36897:                         // Transporter Malfunction (race mutation to horde)
                         case 36899:                         // Transporter Malfunction (race mutation to alliance)
-                            return TROOL_F0_FALSE;
+                            return false;
                     }
                     break;
                 case SPELL_AURA_MOD_SCALE:
@@ -837,12 +837,12 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
                     switch (spellproto->Id)
                     {
                         case 802:                           // Mutate Bug, wrongly negative by target modes
-                            return TROOL_F0_TRUE;
+                            return true;
                         case 36900:                         // Soul Split: Evil!
                         case 36901:                         // Soul Split: Good
                         case 36893:                         // Transporter Malfunction (decrease size case)
                         case 36895:                         // Transporter Malfunction (increase size case)
-                            return TROOL_F0_FALSE;
+                            return false;
                     }
                     break;
                 case SPELL_AURA_MECHANIC_IMMUNITY:
@@ -854,7 +854,7 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
                         case MECHANIC_SHIELD:
                         case MECHANIC_MOUNT:
                         case MECHANIC_INVULNERABILITY:
-                            return TROOL_F0_FALSE;
+                            return false;
                         default:
                             break;
                     }
@@ -867,7 +867,7 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
                     {
                         case SPELLMOD_COST:                 // dependent from bas point sign (negative -> positive)
                             if (spellproto->CalculateSimpleValue(effIndex) > 0)
-                                return TROOL_F0_FALSE;
+                                return false;
                             break;
                         default:
                             break;
@@ -879,7 +879,7 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
                     {
                         case 42792:                         // Recently Dropped Flag (prevent cancel)
                         case 46221:                         // Animal Blood
-                            return TROOL_F0_FALSE;
+                            return false;
                         default:
                             break;
                     }
@@ -896,14 +896,14 @@ TROOL_F0 IsPositiveEffect(SpellEntry const* spellproto, SpellEffectIndex effInde
 
     // non-positive targets
     if (!IsPositiveTarget(spellproto->EffectImplicitTargetA[effIndex], spellproto->EffectImplicitTargetB[effIndex]))
-        return TROOL_F0_FALSE;
+        return false;
 
     // AttributesEx check
     if (spellproto->HasAttribute(SPELL_ATTR_EX_NEGATIVE))
-        return TROOL_F0_FALSE;
+        return false;
 
     // ok, positive
-    return TROOL_F0_TRUE;
+    return true;
 }
 
 bool IsPositiveSpell(uint32 spellId)

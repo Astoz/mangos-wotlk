@@ -40,8 +40,6 @@ class Quest;
 class SpellCastTargets;
 class Unit;
 class WorldObject;
-class BattleGround;
-class OutdoorPvP;
 
 enum ScriptCommand                                          // resSource, resTarget are the resulting Source/ Target after buddy search is done
 {
@@ -524,7 +522,7 @@ class ScriptMgr
 };
 
 // Starters for events
-bool StartEvents_Event(Map* map, uint32 id, Object* source, Object* target, bool isStart = true, BattleGround* bg = NULL, OutdoorPvP* opvp = NULL);
+bool StartEvents_Event(Map* map, uint32 id, Object* source, Object* target, bool isStart = true, Unit* forwardToPvp = NULL);
 
 #define sScriptMgr MaNGOS::Singleton<ScriptMgr>::Instance()
 

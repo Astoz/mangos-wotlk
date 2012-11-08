@@ -375,7 +375,7 @@ struct GameObjectInfo
             uint32 debuildingTimeSecs;                      //16 // unk, only few with value 300)
             uint32 empty11;                                 //17
             uint32 destructibleData;                        //18 m_ID of DestructibleModelData.DBC
-            uint32 empty_;                                  //19
+            uint32 empty12;                                 //19
             uint32 unk7;                                    //20
             uint32 empty13;                                 //21
             uint32 rebuildingEvent;                         //22
@@ -754,7 +754,7 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         void SummonLinkedTrapIfAny();
         void TriggerLinkedGameObject(Unit* target);
 
-        // Destructable GO handling
+        // Destructible GO handling
         void DealGameObjectDamage(uint32 damage, uint32 spell, Unit* caster);
         void RebuildGameObject(uint32 spell, Unit* caster);
         void ForceGameObjectHealth(int32 diff, Unit* caster);

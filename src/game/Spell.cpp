@@ -2142,12 +2142,17 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             break;
         case TARGET_AREAEFFECT_INSTANT:
         {
-            SpellTargets targetB;
-            switch (IsPositiveEffect(m_spellInfo, effIndex))
+            SpellTargets targetB = SPELL_TARGETS_AOE_DAMAGE;
+            switch (m_spellInfo->Effect[effIndex])
             {
-                case TROOL_F0_FALSE:     targetB = SPELL_TARGETS_AOE_DAMAGE; break;
-                case TROOL_F0_TRUE:      targetB = SPELL_TARGETS_FRIENDLY;   break;
-                case TROOL_F0_UNDEFINED: targetB = SPELL_TARGETS_ALL;        break;
+                case SPELL_EFFECT_QUEST_COMPLETE:
+                case SPELL_EFFECT_KILL_CREDIT_PERSONAL:
+                case SPELL_EFFECT_KILL_CREDIT_GROUP:
+                    targetB = SPELL_TARGETS_ALL;
+                default:
+                    // Select friendly targets for positive effect
+                    if (IsPositiveEffect(m_spellInfo, effIndex))
+                        targetB = SPELL_TARGETS_FRIENDLY;
             }
 
             UnitList tempTargetUnitMap;
